@@ -1,0 +1,25 @@
+{
+  "name": "api-monitor",
+  "version": "1.0.0",
+  "description": "A real-time API monitoring system that tracks endpoint availability, HTTP status codes, response times, and failures.",
+  "main": "index.js",
+  "scripts": {
+    "start": "node src/server.js",
+    "dev": "node --watch src/server.js"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/kaustubhchaudhari05/api-monitor.git"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "type": "commonjs",
+  "bugs": {
+    "url": "https://github.com/kaustubhchaudhari05/api-monitor/issues"
+  },
+  "homepage": "https://github.com/kaustubhchaudhari05/api-monitor#readme",
+  "dependencies": {
+    "express": "^5.3.0"
+  }
+}
