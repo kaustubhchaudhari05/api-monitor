@@ -53,8 +53,10 @@ app.get("/monitor", async (req, res) => {
       success: true,
       url: parsedUrl.href,
       statusCode: response.status,
+      isReachable: true,
       isUp: response.ok,
       responseTimeMs,
+      status: responseTimeMs < 2000 ? "UP" : "DEGRADED",
     });
   } catch (error) {
     const isTimeout = error.name === "TimeoutError";
@@ -65,6 +67,7 @@ app.get("/monitor", async (req, res) => {
       isUp: false,
       error: isTimeout ? "Request timed out" : "Unable to reach the API",
       responseTimeMs: Date.now() - startTime,
+      status: "DOWN"
     });
   }
 });
