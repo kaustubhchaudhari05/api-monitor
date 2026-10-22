@@ -1,9 +1,37 @@
+
 const express = require("express");
 const swaggerUi = require("swagger-ui-express");
 const swaggerJsdoc = require("swagger-jsdoc");
+const pool = require("./db");
 
 const app = express();
 const PORT = process.env.PORT || 3000;
+
+// Save a monitoring result to PostgreSQL
+async function saveMonitoringResult(result) {
+  try {
+    await pool.query(
+      `INSERT INTO monitoring_history
+        (url, status_code, is_reachable, is_up,
+         response_time_ms, status, error_message)
+       VALUES ($1, $2, $3, $4, $5, $6, $7)`,
+      [
+        result.url,
+        result.statusCode,
+        result.isReachable,
+        result.isUp,
+        result.responseTimeMs,
+        result.status,
+        result.error || null,
+      ]
+    );
+
+    return true;
+  } catch (error) {
+    console.error("Failed to save monitoring history:", error.message);
+    return false;
+  }
+}
 
 const swaggerOptions = {
   definition: {
@@ -28,7 +56,6 @@ const swaggerSpec = swaggerJsdoc(swaggerOptions);
 
 app.use("/api-docs", swaggerUi.serve, swaggerUi.setup(swaggerSpec));
 
-// Health check for our own server
 /**
  * @swagger
  * /health:
@@ -38,17 +65,6 @@ app.use("/api-docs", swaggerUi.serve, swaggerUi.setup(swaggerSpec));
  *     responses:
  *       200:
  *         description: Server is running successfully
- *         content:
- *           application/json:
- *             schema:
- *               type: object
- *               properties:
- *                 success:
- *                   type: boolean
- *                   example: true
- *                 message:
- *                   type: string
- *                   example: API Monitor is running
  */
 app.get("/health", (req, res) => {
   res.status(200).json({
@@ -57,13 +73,12 @@ app.get("/health", (req, res) => {
   });
 });
 
-// Check an external API
 /**
  * @swagger
  * /monitor:
  *   get:
  *     summary: Monitor an external API endpoint
- *     description: Checks endpoint availability and measures response time.
+ *     description: Checks endpoint availability, response time, and saves the result to PostgreSQL.
  *     tags: [Monitoring]
  *     parameters:
  *       - in: query
@@ -72,15 +87,12 @@ app.get("/health", (req, res) => {
  *         schema:
  *           type: string
  *           format: uri
- *         description: The HTTP or HTTPS endpoint to check
  *         example: https://jsonplaceholder.typicode.com/posts/1
  *     responses:
  *       200:
- *         description: Monitoring result, including HTTP status and response time
+ *         description: Monitoring result. Includes historySaved to indicate whether the result was stored.
  *       400:
  *         description: Missing or invalid URL
- *       502:
- *         description: Monitoring request failed at the HTTP client level
  */
 app.get("/monitor", async (req, res) => {
   const targetUrl = req.query.url;
@@ -119,25 +131,92 @@ app.get("/monitor", async (req, res) => {
 
     const responseTimeMs = Date.now() - startTime;
 
-    return res.status(200).json({
-      success: true,
+    const result = {
       url: parsedUrl.href,
       statusCode: response.status,
       isReachable: true,
       isUp: response.ok,
       responseTimeMs,
-      status: responseTimeMs < 2000 ? "UP" : "DEGRADED",
+      status:
+        !response.ok || responseTimeMs >= 2000
+          ? "DEGRADED"
+          : "UP",
+    };
+
+    const historySaved = await saveMonitoringResult(result);
+
+    return res.status(200).json({
+      success: true,
+      ...result,
+      historySaved,
     });
   } catch (error) {
     const isTimeout = error.name === "TimeoutError";
 
+    const result = {
+      url: parsedUrl.href,
+      statusCode: null,
+      isReachable: false,
+      isUp: false,
+      responseTimeMs: Date.now() - startTime,
+      status: "DOWN",
+      error: isTimeout
+        ? "Request timed out"
+        : "Unable to reach the API",
+    };
+
+    const historySaved = await saveMonitoringResult(result);
+
     return res.status(200).json({
       success: true,
-      url: parsedUrl.href,
-      isUp: false,
-      error: isTimeout ? "Request timed out" : "Unable to reach the API",
-      responseTimeMs: Date.now() - startTime,
-      status: "DOWN"
+      ...result,
+      historySaved,
+    });
+  }
+});
+
+/**
+ * @swagger
+ * /history:
+ *   get:
+ *     summary: Get recent monitoring history
+ *     description: Returns the 10 most recent API monitoring results.
+ *     tags: [Monitoring]
+ *     responses:
+ *       200:
+ *         description: Monitoring history retrieved successfully
+ *       500:
+ *         description: Failed to retrieve monitoring history
+ */
+app.get("/history", async (req, res) => {
+  try {
+    const result = await pool.query(`
+      SELECT
+        id,
+        url,
+        status_code,
+        is_reachable,
+        is_up,
+        response_time_ms,
+        status,
+        error_message,
+        checked_at
+      FROM monitoring_history
+      ORDER BY id DESC
+      LIMIT 10;
+    `);
+
+    return res.status(200).json({
+      success: true,
+      count: result.rows.length,
+      data: result.rows,
+    });
+  } catch (error) {
+    console.error("Failed to retrieve monitoring history:", error.message);
+
+    return res.status(500).json({
+      success: false,
+      message: "Failed to retrieve monitoring history",
     });
   }
 });
