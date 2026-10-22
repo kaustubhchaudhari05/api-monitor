@@ -175,40 +175,79 @@ app.get("/monitor", async (req, res) => {
   }
 });
 
+
 /**
  * @swagger
  * /history:
  *   get:
- *     summary: Get recent monitoring history
- *     description: Returns the 10 most recent API monitoring results.
+ *     summary: Get paginated monitoring history
+ *     description: Returns monitoring results with limit and offset pagination.
  *     tags: [Monitoring]
+ *     parameters:
+ *       - in: query
+ *         name: limit
+ *         schema:
+ *           type: integer
+ *           default: 10
+ *           minimum: 1
+ *           maximum: 100
+ *         description: Number of records to return
+ *       - in: query
+ *         name: offset
+ *         schema:
+ *           type: integer
+ *           default: 0
+ *           minimum: 0
+ *         description: Number of records to skip
  *     responses:
  *       200:
  *         description: Monitoring history retrieved successfully
+ *       400:
+ *         description: Invalid pagination parameters
  *       500:
  *         description: Failed to retrieve monitoring history
  */
 app.get("/history", async (req, res) => {
+  const limit = Number(req.query.limit ?? 10);
+  const offset = Number(req.query.offset ?? 0);
+
+  if (
+    !Number.isInteger(limit) ||
+    limit < 1 ||
+    limit > 100 ||
+    !Number.isInteger(offset) ||
+    offset < 0
+  ) {
+    return res.status(400).json({
+      success: false,
+      message:
+        "limit must be an integer from 1 to 100, and offset must be a non-negative integer",
+    });
+  }
+
   try {
-    const result = await pool.query(`
-      SELECT
-        id,
-        url,
-        status_code,
-        is_reachable,
-        is_up,
-        response_time_ms,
-        status,
-        error_message,
-        checked_at
-      FROM monitoring_history
-      ORDER BY id DESC
-      LIMIT 10;
-    `);
+    const result = await pool.query(
+      `SELECT
+         id,
+         url,
+         status_code,
+         is_reachable,
+         is_up,
+         response_time_ms,
+         status,
+         error_message,
+         checked_at
+       FROM monitoring_history
+       ORDER BY id DESC
+       LIMIT $1 OFFSET $2`,
+      [limit, offset]
+    );
 
     return res.status(200).json({
       success: true,
       count: result.rows.length,
+      limit,
+      offset,
       data: result.rows,
     });
   } catch (error) {
@@ -220,6 +259,7 @@ app.get("/history", async (req, res) => {
     });
   }
 });
+
 
 app.listen(PORT, () => {
   console.log(`API Monitor running at http://localhost:${PORT}`);
