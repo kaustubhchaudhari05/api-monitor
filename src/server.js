@@ -1,9 +1,55 @@
 const express = require("express");
+const swaggerUi = require("swagger-ui-express");
+const swaggerJsdoc = require("swagger-jsdoc");
 
 const app = express();
 const PORT = process.env.PORT || 3000;
 
+const swaggerOptions = {
+  definition: {
+    openapi: "3.0.0",
+    info: {
+      title: "API Monitoring System",
+      version: "1.0.0",
+      description:
+        "API for monitoring endpoint availability and response times.",
+    },
+    servers: [
+      {
+        url: `http://localhost:${PORT}`,
+        description: "Local development server",
+      },
+    ],
+  },
+  apis: ["./src/server.js"],
+};
+
+const swaggerSpec = swaggerJsdoc(swaggerOptions);
+
+app.use("/api-docs", swaggerUi.serve, swaggerUi.setup(swaggerSpec));
+
 // Health check for our own server
+/**
+ * @swagger
+ * /health:
+ *   get:
+ *     summary: Check API Monitor server health
+ *     tags: [Health]
+ *     responses:
+ *       200:
+ *         description: Server is running successfully
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 success:
+ *                   type: boolean
+ *                   example: true
+ *                 message:
+ *                   type: string
+ *                   example: API Monitor is running
+ */
 app.get("/health", (req, res) => {
   res.status(200).json({
     success: true,
@@ -12,6 +58,30 @@ app.get("/health", (req, res) => {
 });
 
 // Check an external API
+/**
+ * @swagger
+ * /monitor:
+ *   get:
+ *     summary: Monitor an external API endpoint
+ *     description: Checks endpoint availability and measures response time.
+ *     tags: [Monitoring]
+ *     parameters:
+ *       - in: query
+ *         name: url
+ *         required: true
+ *         schema:
+ *           type: string
+ *           format: uri
+ *         description: The HTTP or HTTPS endpoint to check
+ *         example: https://jsonplaceholder.typicode.com/posts/1
+ *     responses:
+ *       200:
+ *         description: Monitoring result, including HTTP status and response time
+ *       400:
+ *         description: Missing or invalid URL
+ *       502:
+ *         description: Monitoring request failed at the HTTP client level
+ */
 app.get("/monitor", async (req, res) => {
   const targetUrl = req.query.url;
 
