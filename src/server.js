@@ -261,6 +261,51 @@ app.get("/history", async (req, res) => {
 });
 
 
+app.get("/stats", async (req, res) => {
+  try {
+    const result = await pool.query(`
+      SELECT
+        COUNT(*) AS total_checks,
+        COUNT(*) FILTER (WHERE is_up = TRUE) AS successful_checks,
+        COUNT(*) FILTER (WHERE is_up = FALSE) AS failed_checks,
+        ROUND(
+          COUNT(*) FILTER (WHERE is_up = TRUE) * 100.0
+          / NULLIF(COUNT(*), 0),
+          2
+        ) AS uptime_percentage,
+        ROUND(AVG(response_time_ms), 2) AS average_response_time_ms
+      FROM monitoring_history
+    `);
+
+    const stats = result.rows[0];
+
+    return res.status(200).json({
+      success: true,
+      data: {
+        total_checks: Number(stats.total_checks),
+        successful_checks: Number(stats.successful_checks),
+        failed_checks: Number(stats.failed_checks),
+        uptime_percentage:
+          stats.uptime_percentage === null
+            ? null
+            : Number(stats.uptime_percentage),
+        average_response_time_ms:
+          stats.average_response_time_ms === null
+            ? null
+            : Number(stats.average_response_time_ms),
+      },
+    });
+  } catch (error) {
+    console.error("Failed to retrieve monitoring statistics:", error.message);
+
+    return res.status(500).json({
+      success: false,
+      message: "Failed to retrieve monitoring statistics",
+    });
+  }
+});
+
+
 app.listen(PORT, () => {
   console.log(`API Monitor running at http://localhost:${PORT}`);
 });
