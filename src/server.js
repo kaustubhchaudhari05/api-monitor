@@ -5,7 +5,7 @@ const swaggerJsdoc = require("swagger-jsdoc");
 const pool = require("./db");
 
 const app = express();
-const PORT = process.env.PORT || 3000;
+const PORT = process.env.PORT || 3001;
 
 // Save a monitoring result to PostgreSQL
 async function saveMonitoringResult(result) {
@@ -210,37 +210,41 @@ app.get("/monitor", async (req, res) => {
 app.get("/history", async (req, res) => {
   const limit = Number(req.query.limit ?? 10);
   const offset = Number(req.query.offset ?? 0);
+  const status = req.query.status;
 
   if (
     !Number.isInteger(limit) ||
     limit < 1 ||
     limit > 100 ||
     !Number.isInteger(offset) ||
-    offset < 0
+    offset < 0 ||
+    (status !== undefined &&
+      !["UP", "DOWN", "DEGRADED"].includes(status))
   ) {
     return res.status(400).json({
       success: false,
       message:
-        "limit must be an integer from 1 to 100, and offset must be a non-negative integer",
+        "Invalid query parameters. limit must be an integer from 1 to 100, offset must be a non-negative integer, and status must be UP, DOWN, or DEGRADED.",
     });
   }
 
   try {
     const result = await pool.query(
       `SELECT
-         id,
-         url,
-         status_code,
-         is_reachable,
-         is_up,
-         response_time_ms,
-         status,
-         error_message,
-         checked_at
-       FROM monitoring_history
-       ORDER BY id DESC
-       LIMIT $1 OFFSET $2`,
-      [limit, offset]
+     id,
+     url,
+     status_code,
+     is_reachable,
+     is_up,
+     response_time_ms,
+     status,
+     error_message,
+     checked_at
+   FROM monitoring_history
+   WHERE ($1::VARCHAR IS NULL OR status = $1)
+   ORDER BY id DESC
+   LIMIT $2 OFFSET $3`,
+      [status ?? null, limit, offset]
     );
 
     return res.status(200).json({
