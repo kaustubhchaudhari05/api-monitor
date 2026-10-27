@@ -4,9 +4,31 @@ const swaggerUi = require("swagger-ui-express");
 const swaggerJsdoc = require("swagger-jsdoc");
 const pool = require("./db");
 const cors = require("cors");
+const { router: authRouter, authenticateToken } = require("./auth");
+const rateLimit = require("express-rate-limit");
 
 const app = express();
-app.use(cors());
+app.use(cors({
+  origin: "http://localhost:5173",
+  methods: ["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
+  allowedHeaders: ["Content-Type", "Authorization"],
+}));
+
+app.use(express.json());
+app.use("/auth", authRouter);
+
+const apiLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000, // 15 minutes
+  limit: 100,
+  standardHeaders: "draft-8",
+  legacyHeaders: false,
+  message: {
+    success: false,
+    message: "Too many API requests. Try again in 15 minutes.",
+  },
+});
+
+app.use(["/monitor", "/history", "/stats"], apiLimiter);
 const PORT = process.env.PORT || 3001;
 
 // Save a monitoring result to PostgreSQL
@@ -96,7 +118,7 @@ app.get("/health", (req, res) => {
  *       400:
  *         description: Missing or invalid URL
  */
-app.get("/monitor", async (req, res) => {
+app.get("/monitor", authenticateToken, async (req, res) => {
   const targetUrl = req.query.url;
 
   if (!targetUrl) {
@@ -209,7 +231,7 @@ app.get("/monitor", async (req, res) => {
  *       500:
  *         description: Failed to retrieve monitoring history
  */
-app.get("/history", async (req, res) => {
+app.get("/history", authenticateToken, async (req, res) => {
   const limit = Number(req.query.limit ?? 10);
   const offset = Number(req.query.offset ?? 0);
   const status = req.query.status;
@@ -267,7 +289,7 @@ app.get("/history", async (req, res) => {
 });
 
 
-app.get("/stats", async (req, res) => {
+app.get("/stats", authenticateToken, async (req, res) => {
   try {
     const result = await pool.query(`
       SELECT

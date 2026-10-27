@@ -590,3 +590,144 @@ td {
   opacity: 0.4;
   cursor: not-allowed;
 }
+
+
+.auth-page {
+  min-height: 100vh;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 24px;
+  background: #f3f5fa;
+}
+
+.auth-card {
+  width: 100%;
+  max-width: 420px;
+  padding: 36px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  background: #fff;
+  border: 1px solid #e5e7eb;
+  border-radius: 18px;
+  box-shadow: 0 16px 50px rgba(15, 23, 42, 0.08);
+}
+
+.auth-brand-icon {
+  width: 54px;
+  height: 54px;
+  display: grid;
+  place-items: center;
+  border-radius: 15px;
+  background: #e9efff;
+  color: #3659c9;
+}
+
+.auth-eyebrow {
+  margin: 8px 0 0;
+  color: #5269bb;
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 1.5px;
+}
+
+.auth-card h1 {
+  margin: 0;
+  color: #172033;
+  font-size: 28px;
+}
+
+.auth-description,
+.auth-footnote {
+  color: #697386;
+  font-size: 14px;
+  line-height: 1.6;
+}
+
+.auth-card label {
+  margin-top: 8px;
+  color: #30394b;
+  font-size: 13px;
+  font-weight: 600;
+}
+
+.auth-input-wrap {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 0 12px;
+  border: 1px solid #d9deea;
+  border-radius: 9px;
+  color: #7b8497;
+}
+
+.auth-input-wrap:focus-within {
+  border-color: #5269bb;
+  box-shadow: 0 0 0 3px rgba(82, 105, 187, 0.12);
+}
+
+.auth-input-wrap input {
+  width: 100%;
+  min-width: 0;
+  padding: 13px 0;
+  border: 0;
+  outline: 0;
+  background: transparent;
+  color: #172033;
+  font: inherit;
+}
+
+.auth-submit {
+  width: 100%;
+  justify-content: center;
+  margin-top: 12px;
+}
+
+.auth-footnote {
+  margin: 8px 0 0;
+  text-align: center;
+  font-size: 12px;
+}
+
+.account-actions {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  flex-wrap: wrap;
+  gap: 12px;
+}
+
+.account-info {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  text-align: right;
+  font-size: 12px;
+}
+
+.account-info strong {
+  color: #263248;
+  overflow-wrap: anywhere;
+}
+
+.account-info span {
+  color: #697386;
+  text-transform: uppercase;
+  font-size: 10px;
+  letter-spacing: 0.8px;
+}
+
+@media (max-width: 760px) {
+  .auth-card {
+    padding: 26px;
+  }
+
+  .account-actions {
+    justify-content: flex-start;
+  }
+
+  .account-info {
+    text-align: left;
+  }
+}
